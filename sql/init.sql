@@ -1,0 +1,1 @@
+CREATE DATABASE ecommerce_order_analytics_system;
