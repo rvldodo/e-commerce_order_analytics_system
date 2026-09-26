@@ -131,5 +131,4 @@ make run-cli
 go build -o ./bin/cron ./cmd/cron && ./bin/cron
 # or
 make run-cron
----
 ```
