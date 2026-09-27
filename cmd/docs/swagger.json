@@ -1,0 +1,35 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "This is a documentation for Screening Test: Data Automation \u0026 Retrieval Engineer (PostgreSQL / Go)",
+        "title": "Screening Test: Data Automation \u0026 Retrieval Engineer (PostgreSQL / Go)",
+        "contact": {},
+        "version": "1.0"
+    },
+    "paths": {
+        "/api/health-check": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Check the API health",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "User API token issued by POST /api/auth/login. Send it as \"Bearer \u003ctoken\u003e\".",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

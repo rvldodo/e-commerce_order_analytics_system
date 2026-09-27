@@ -2,10 +2,14 @@ package main
 
 import (
 	"context"
+	_ "e-commerce_order_analytics_system/cmd/docs"
 	"e-commerce_order_analytics_system/internal/adapter/postgres"
 	"e-commerce_order_analytics_system/internal/config"
+	"e-commerce_order_analytics_system/internal/repository"
+	"e-commerce_order_analytics_system/pkg/jwt"
 	"e-commerce_order_analytics_system/pkg/logger"
 	"e-commerce_order_analytics_system/transport/http"
+	"e-commerce_order_analytics_system/transport/http/handler"
 	httpnet "net/http"
 	"os"
 	"os/signal"
@@ -15,6 +19,14 @@ import (
 	"go.uber.org/zap"
 )
 
+// @title						Screening Test: Data Automation & Retrieval Engineer (PostgreSQL / Go)
+// @version					1.0
+// @description				This is a documentation for Screening Test: Data Automation & Retrieval Engineer (PostgreSQL / Go)
+//
+// @securityDefinitions.apikey	BearerAuth
+// @in							header
+// @name						Authorization
+// @description				User API token issued by POST /api/auth/login. Send it as "Bearer <token>".
 func main() {
 	cfg := config.New()
 
@@ -24,10 +36,21 @@ func main() {
 	defer logger.Sync()
 
 	// NOTE: Intialize DB
-	_, err := postgres.NewDatabasePostgres(cfg.Database)
+	db, err := postgres.NewDatabasePostgres(cfg.Database)
 	if err != nil {
 		logger.Sugar.Fatalf("Failed to initalize Database: %s", err.Error())
 	}
+
+	// NOTE: Intialize Repository
+	repo := repository.New(db)
+
+	// NOTE: Intialize JWT Tokenizer
+	jwtTokenizer := jwt.New(jwt.Config{
+		AccessTokenSecret:  cfg.JWT.JWTSecret,
+		RefreshTokenSecret: cfg.JWT.JWTRefreshSecret,
+	})
+
+	handler.New(repo, jwtTokenizer)
 
 	srv := http.New(cfg)
 

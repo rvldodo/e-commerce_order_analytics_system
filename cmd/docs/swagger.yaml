@@ -1,0 +1,25 @@
+info:
+  contact: {}
+  description: 'This is a documentation for Screening Test: Data Automation & Retrieval
+    Engineer (PostgreSQL / Go)'
+  title: 'Screening Test: Data Automation & Retrieval Engineer (PostgreSQL / Go)'
+  version: "1.0"
+paths:
+  /api/health-check:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Check the API health
+      tags:
+      - Health
+securityDefinitions:
+  BearerAuth:
+    description: User API token issued by POST /api/auth/login. Send it as "Bearer
+      <token>".
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
