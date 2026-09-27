@@ -61,6 +61,7 @@ CREATE TABLE categories (
     id         INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name       VARCHAR(100) NOT NULL,
     parent_id  INT REFERENCES categories(id),
+
     CONSTRAINT uq_categories_name UNIQUE (name)
 );
  
