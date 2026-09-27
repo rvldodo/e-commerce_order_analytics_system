@@ -69,7 +69,7 @@ go mod tidy
 
 ### 2. Configure environment
 
-Copy `.env.example` to `.env` and fill in the required values (database URL, Redis, RabbitMQ, DurianPay credentials, JWT secrets, OAuth keys, etc.):
+Copy `.env.example` to `.env` and fill in the required values (database URL, JWT secrets, etc.):
 
 ```bash
 cp .env.example .env
