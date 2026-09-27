@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"e-commerce_order_analytics_system/pkg/lib"
+
 	"github.com/joho/godotenv"
 )
 

@@ -132,3 +132,12 @@ go build -o ./bin/cron ./cmd/cron && ./bin/cron
 # or
 make run-cron
 ```
+
+## API Endpoints
+
+Routes are registered in [`transport/http/router.go`](transport/http/router.go). All versioned endpoints are mounted under `/api`.
+
+Interactive docs:
+
+- Swagger UI — `GET /docs/*any`
+- Scalar reference — `GET /reference`

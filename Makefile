@@ -3,7 +3,7 @@ MIGRATIONS_PATH = ./migrations
 
 APP_NAME=e-commerce_order_analytics_system
 
-.PHONY: tidy build build-cli build-cron run-api run-cli run-cron migration migration-up migration-down migration-force migration-version
+.PHONY: tidy build build-cli build-cron run-api run-cli run-cron migration migration-up migration-down migration-force migration-version swag swag-format
 
 tidy:
 	@go mod tidy
@@ -48,3 +48,11 @@ migration-force:
 .PHONY: migration-version
 migration-version:
 	@migrate -path=${MIGRATIONS_PATH} -database=${DB_MIGRATOR_ADDR} version
+
+.PHONY: swag
+swag:
+	@swag init -g ./cmd/api/main.go -o cmd/docs
+
+.PHONY: swag-format
+swag-format:
+	@swag fmt
