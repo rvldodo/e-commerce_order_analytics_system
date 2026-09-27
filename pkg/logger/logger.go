@@ -2,22 +2,49 @@ package logger
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"math/rand"
 	"runtime"
 	"strings"
+	"sync/atomic"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-// ── global logger instances ───────────────────────────────────────────────────
+type LogLevel = zapcore.Level
+
+const (
+	DEBUG LogLevel = zapcore.DebugLevel
+	INFO  LogLevel = zapcore.InfoLevel
+	WARN  LogLevel = zapcore.WarnLevel
+	ERROR LogLevel = zapcore.ErrorLevel
+	FATAL LogLevel = zapcore.FatalLevel
+)
 
 var (
 	Log   *zap.Logger
 	Sugar *zap.SugaredLogger
+
+	level zap.AtomicLevel
+
+	callerLog *zap.Logger
+
+	openLog *zap.Logger
+
+	defaultLogger = &ZapLogger{isDefault: true}
 )
+
+func init() {
+	cfg := zap.NewDevelopmentConfig()
+	l, err := cfg.Build()
+	if err != nil {
+		setLoggers(zap.NewNop(), zap.NewAtomicLevel())
+		return
+	}
+	setLoggers(l, cfg.Level)
+}
 
 func Init(env string) error {
 	var cfg zap.Config
@@ -29,14 +56,27 @@ func Init(env string) error {
 		cfg = zap.NewDevelopmentConfig()
 		cfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	}
-	l, err := cfg.Build(zap.AddCallerSkip(0))
+	l, err := cfg.Build()
 	if err != nil {
 		return err
 	}
-	Log = l
-	Sugar = l.Sugar()
+	setLoggers(l, cfg.Level)
 	return nil
 }
+
+func setLoggers(l *zap.Logger, lvl zap.AtomicLevel) {
+	Log = l
+	Sugar = l.Sugar()
+	callerLog = l.WithOptions(zap.AddCallerSkip(2))
+	openLog = callerLog.WithOptions(zap.WrapCore(func(c zapcore.Core) zapcore.Core {
+		return allLevelsCore{c}
+	}))
+	level = lvl
+}
+
+func SetLevel(lvl LogLevel) { level.SetLevel(lvl) }
+
+func SetPrefix(prefix string) { defaultLogger.SetPrefix(prefix) }
 
 func Sync() {
 	if Log != nil {
@@ -44,7 +84,176 @@ func Sync() {
 	}
 }
 
-// ── context keys ──────────────────────────────────────────────────────────────
+type allLevelsCore struct{ zapcore.Core }
+
+func (c allLevelsCore) Enabled(zapcore.Level) bool { return true }
+
+func (c allLevelsCore) With(fields []zapcore.Field) zapcore.Core {
+	return allLevelsCore{c.Core.With(fields)}
+}
+
+func (c allLevelsCore) Check(e zapcore.Entry, ce *zapcore.CheckedEntry) *zapcore.CheckedEntry {
+	return ce.AddCore(e, c)
+}
+
+type Logger interface {
+	Debug(ctx context.Context, args ...interface{})
+	Debugf(ctx context.Context, format string, v ...interface{})
+	Info(ctx context.Context, args ...interface{})
+	Infof(ctx context.Context, format string, v ...interface{})
+	Warn(ctx context.Context, args ...interface{})
+	Warnf(ctx context.Context, format string, v ...interface{})
+	Error(ctx context.Context, args ...interface{})
+	Errorf(ctx context.Context, format string, v ...interface{})
+	Fatal(args ...interface{})
+	Fatalf(format string, v ...interface{})
+}
+
+var _ Logger = (*ZapLogger)(nil)
+
+type ZapLogger struct {
+	isDefault bool
+	level     zap.AtomicLevel
+	prefix    atomic.Pointer[string]
+}
+
+func Default() *ZapLogger { return defaultLogger }
+
+func New() *ZapLogger {
+	return &ZapLogger{level: zap.NewAtomicLevelAt(INFO)}
+}
+
+func (l *ZapLogger) SetLevel(lvl LogLevel) {
+	if l.isDefault {
+		SetLevel(lvl)
+		return
+	}
+	l.level.SetLevel(lvl)
+}
+
+func (l *ZapLogger) Level() LogLevel {
+	if l.isDefault {
+		return level.Level()
+	}
+	return l.level.Level()
+}
+
+func (l *ZapLogger) SetPrefix(prefix string) { l.prefix.Store(&prefix) }
+
+func (l *ZapLogger) Enabled(lvl LogLevel) bool {
+	if l.isDefault {
+		return callerLog.Core().Enabled(lvl)
+	}
+	return l.level.Enabled(lvl)
+}
+
+func (l *ZapLogger) Debug(ctx context.Context, args ...interface{}) {
+	write(l, ctx, zapcore.DebugLevel, "", args)
+}
+func (l *ZapLogger) Debugf(ctx context.Context, format string, v ...interface{}) {
+	write(l, ctx, zapcore.DebugLevel, format, v)
+}
+func (l *ZapLogger) Info(ctx context.Context, args ...interface{}) {
+	write(l, ctx, zapcore.InfoLevel, "", args)
+}
+func (l *ZapLogger) Infof(ctx context.Context, format string, v ...interface{}) {
+	write(l, ctx, zapcore.InfoLevel, format, v)
+}
+func (l *ZapLogger) Warn(ctx context.Context, args ...interface{}) {
+	write(l, ctx, zapcore.WarnLevel, "", args)
+}
+func (l *ZapLogger) Warnf(ctx context.Context, format string, v ...interface{}) {
+	write(l, ctx, zapcore.WarnLevel, format, v)
+}
+func (l *ZapLogger) Error(ctx context.Context, args ...interface{}) {
+	write(l, ctx, zapcore.ErrorLevel, "", args)
+}
+func (l *ZapLogger) Errorf(ctx context.Context, format string, v ...interface{}) {
+	write(l, ctx, zapcore.ErrorLevel, format, v)
+}
+
+func (l *ZapLogger) Fatal(args ...interface{}) {
+	write(l, context.Background(), zapcore.FatalLevel, "", args)
+}
+
+func (l *ZapLogger) Fatalf(format string, v ...interface{}) {
+	write(l, context.Background(), zapcore.FatalLevel, format, v)
+}
+
+func (l *ZapLogger) Print(v ...interface{}) {
+	write(l, context.Background(), zapcore.InfoLevel, "", v)
+}
+func (l *ZapLogger) Printf(format string, v ...interface{}) {
+	write(l, context.Background(), zapcore.InfoLevel, format, v)
+}
+func (l *ZapLogger) Println(v ...interface{}) {
+	write(l, context.Background(), zapcore.InfoLevel, "%s",
+		[]interface{}{strings.TrimSuffix(fmt.Sprintln(v...), "\n")})
+}
+
+func Debug(ctx context.Context, args ...interface{}) {
+	write(defaultLogger, ctx, zapcore.DebugLevel, "", args)
+}
+func Debugf(ctx context.Context, format string, v ...interface{}) {
+	write(defaultLogger, ctx, zapcore.DebugLevel, format, v)
+}
+func Info(ctx context.Context, args ...interface{}) {
+	write(defaultLogger, ctx, zapcore.InfoLevel, "", args)
+}
+func Infof(ctx context.Context, format string, v ...interface{}) {
+	write(defaultLogger, ctx, zapcore.InfoLevel, format, v)
+}
+func Warn(ctx context.Context, args ...interface{}) {
+	write(defaultLogger, ctx, zapcore.WarnLevel, "", args)
+}
+func Warnf(ctx context.Context, format string, v ...interface{}) {
+	write(defaultLogger, ctx, zapcore.WarnLevel, format, v)
+}
+func Error(ctx context.Context, args ...interface{}) {
+	write(defaultLogger, ctx, zapcore.ErrorLevel, "", args)
+}
+func Errorf(ctx context.Context, format string, v ...interface{}) {
+	write(defaultLogger, ctx, zapcore.ErrorLevel, format, v)
+}
+func Fatal(args ...interface{}) {
+	write(defaultLogger, context.Background(), zapcore.FatalLevel, "", args)
+}
+func Fatalf(format string, v ...interface{}) {
+	write(defaultLogger, context.Background(), zapcore.FatalLevel, format, v)
+}
+
+func write(
+	l *ZapLogger,
+	ctx context.Context,
+	lvl zapcore.Level,
+	template string,
+	args []interface{},
+) {
+	out := callerLog
+	if !l.isDefault {
+		out = openLog
+	}
+	if lvl < zapcore.FatalLevel && !l.Enabled(lvl) {
+		return
+	}
+
+	var msg string
+	switch {
+	case template == "":
+		msg = fmt.Sprint(args...)
+	case len(args) == 0:
+		msg = template
+	default:
+		msg = fmt.Sprintf(template, args...)
+	}
+	if p := l.prefix.Load(); p != nil && *p != "" {
+		msg = *p + msg
+	}
+
+	if ce := out.Check(lvl, msg); ce != nil {
+		ce.Write(contextFields(ctx)...)
+	}
+}
 
 type ctxKey string
 
@@ -56,8 +265,6 @@ const (
 	Device     ctxKey = "device"
 	AppVersion ctxKey = "appVersion"
 )
-
-// ── context helpers ───────────────────────────────────────────────────────────
 
 func SetCtx(ctx context.Context, key ctxKey, value string) context.Context {
 	return context.WithValue(ctx, key, value)
@@ -73,7 +280,7 @@ func GetCtx(ctx context.Context, key ctxKey) string {
 
 func SetRequestIDCtx(ctx context.Context) context.Context {
 	b := make([]byte, 4)
-	rand.Read(b)
+	_, _ = rand.Read(b)
 	return SetCtx(ctx, RequestID, hex.EncodeToString(b))
 }
 
@@ -126,13 +333,9 @@ func GetCallerFuncName(skip int) string {
 	return parts[len(parts)-1]
 }
 
-// ── context-aware logging ─────────────────────────────────────────────────────
-
-// WithContext returns a *zap.Logger pre-populated with fields from ctx.
-// Usage:  logger.WithContext(ctx).Info("something happened")
-func WithContext(ctx context.Context) *zap.Logger {
-	if Log == nil || ctx == nil {
-		return Log
+func contextFields(ctx context.Context) []zap.Field {
+	if ctx == nil {
+		return nil
 	}
 	fields := make([]zap.Field, 0, 6)
 
@@ -154,11 +357,16 @@ func WithContext(ctx context.Context) *zap.Logger {
 	if v := GetAppVersionCtx(ctx); v != "" {
 		fields = append(fields, zap.String("appVersion", v))
 	}
-
-	return Log.With(fields...)
+	return fields
 }
 
-// SugarWithContext returns a *zap.SugaredLogger pre-populated with fields from ctx.
+func WithContext(ctx context.Context) *zap.Logger {
+	if ctx == nil {
+		return Log
+	}
+	return Log.With(contextFields(ctx)...)
+}
+
 func SugarWithContext(ctx context.Context) *zap.SugaredLogger {
 	return WithContext(ctx).Sugar()
 }
