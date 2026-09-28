@@ -98,7 +98,7 @@ func generateSingleToken(param SingleTokenParam) (TokenPair, error) {
 }
 
 func (t *Tokenizer) GenerateTokenDetail(userID int64) (TokenDetail, error) {
-	accessTokenExpiryTime := time.Now().Add(expired30Days)
+	accessTokenExpiryTime := time.Now().Add(expired1Day)
 	refreshTokenExpiryTime := time.Now().Add(expired30Days)
 	tokenDetails := TokenDetail{
 		AccessTokenExpiredAtTime:  accessTokenExpiryTime,

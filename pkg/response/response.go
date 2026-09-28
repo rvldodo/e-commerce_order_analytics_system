@@ -9,9 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Err writes the appropriate HTTP error response.
-// If err is an *apperror.AppError the status and message come from the error code.
-// Any other error falls back to 500.
 func Err(c *gin.Context, err error) {
 	var ae *apperror.AppError
 	if errors.As(err, &ae) {
@@ -28,7 +25,6 @@ func Err(c *gin.Context, err error) {
 	Internal(c, err.Error())
 }
 
-// Success: just return the data, no envelope.
 func OK(c *gin.Context, data any) {
 	c.JSON(http.StatusOK, data)
 }
@@ -41,7 +37,6 @@ func NoContent(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// Paginated success — when you need it
 type Page[T any] struct {
 	Data     []T   `json:"data"`
 	Total    int64 `json:"total"`
@@ -55,15 +50,14 @@ func Paginated[T any](c *gin.Context, items []T, total int64, page, size int) {
 	})
 }
 
-// Error — RFC 7807 Problem Details
 type Problem struct {
 	Type     string       `json:"type,omitempty"`
 	Title    string       `json:"title,omitempty"`
 	Status   int          `json:"status,omitempty"`
 	Detail   string       `json:"detail,omitempty"`
 	Instance string       `json:"instance,omitempty"`
-	Code     string       `json:"code,omitempty"`   // app-specific error code
-	Errors   []FieldError `json:"errors,omitempty"` // for validation errors
+	Code     string       `json:"code,omitempty"`
+	Errors   []FieldError `json:"errors,omitempty"`
 }
 
 type FieldError struct {
@@ -81,7 +75,6 @@ func Error(c *gin.Context, status int, code, title, detail string) {
 	})
 }
 
-// Convenience helpers
 func BadRequest(c *gin.Context, code, detail string) {
 	Error(c, http.StatusBadRequest, code, "Bad Request", detail)
 }
@@ -102,7 +95,6 @@ func Internal(c *gin.Context, detail string) {
 	Error(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal Server Error", detail)
 }
 
-// Validation error helper
 func ValidationFailed(c *gin.Context, errs []FieldError) {
 	c.JSON(http.StatusUnprocessableEntity, Problem{
 		Title:    "Validation Failed",

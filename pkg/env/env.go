@@ -11,8 +11,6 @@ import (
 )
 
 func init() {
-	// Silently skip if .env doesn't exist (e.g. env vars injected directly).
-	// Fatal if the file exists but can't be read (permissions issue).
 	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
 		panic("env: failed to load .env: " + err.Error())
 	}
@@ -71,7 +69,6 @@ func GetStringArray(key string, fallback []string) []string {
 		return fallback
 	}
 
-	// Split by comma and trim spaces
 	parts := strings.Split(value, ",")
 	result := make([]string, 0, len(parts))
 	for _, part := range parts {

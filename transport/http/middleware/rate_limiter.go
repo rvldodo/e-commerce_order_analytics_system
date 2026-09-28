@@ -56,7 +56,7 @@ type RateLimiter struct {
 	mu      sync.Mutex
 	buckets map[string]*bucket
 
-	refill float64 // tokens per second
+	refill float64
 	burst  float64
 	cfg    RateLimitConfig
 
@@ -180,27 +180,15 @@ func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 			)
 		}
 
-		// Reuse the registered code so the body matches every other error the
-		// API returns, rather than inventing a second 429 shape.
 		response.Err(c, apperror.New(apperror.RateLimited))
 		c.Abort()
 	}
 }
 
-// ── common key functions ──────────────────────────────────────────────────────
-
-// KeyByIP limits per client IP. This is gin's ClientIP, so it honours
-// X-Forwarded-For only for proxies you have marked trusted via
-// (*gin.Engine).SetTrustedProxies. Leave that unset behind a load balancer and
-// every request appears to come from the balancer, collapsing all clients into
-// one bucket.
 func KeyByIP() func(*gin.Context) string {
 	return func(c *gin.Context) string { return c.ClientIP() }
 }
 
-// KeyByHeader limits per header value — an API key or device token. Falls back
-// to the client IP when the header is absent, so an unauthenticated caller
-// cannot dodge the limit by omitting it.
 func KeyByHeader(name string) func(*gin.Context) string {
 	return func(c *gin.Context) string {
 		if v := c.GetHeader(name); v != "" {
@@ -210,9 +198,6 @@ func KeyByHeader(name string) func(*gin.Context) string {
 	}
 }
 
-// KeyByContext limits per value previously stored in the gin context — the
-// authenticated user or tenant set by auth middleware. Falls back to the
-// client IP when the key is missing or not a string.
 func KeyByContext(ctxKey string) func(*gin.Context) string {
 	return func(c *gin.Context) string {
 		if v, exists := c.Get(ctxKey); exists {
