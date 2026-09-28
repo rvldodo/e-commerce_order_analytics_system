@@ -120,9 +120,12 @@ make run-api
 **CLI:**
 
 ```bash
-go build -o ./bin/cli ./cmd/cli && ./bin/cli
+go build -o ./report ./cmd/cli
 # or
-make run-cli
+make build-cli
+
+# then (to see all commands available)
+./report -- help
 ```
 
 **Cron:**
