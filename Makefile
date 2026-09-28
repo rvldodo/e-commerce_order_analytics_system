@@ -14,7 +14,7 @@ build:
 
 build-cli:
 	@echo "Building $(APP_NAME) CLI..."
-	@go build -o bin/cli ./cmd/cli
+	@go build -o ./report ./cmd/cli
 
 build-cron:
 	@echo "Building $(APP_NAME) Cron..."
@@ -24,7 +24,7 @@ run-api: build
 	@./bin/api
 
 run-cli: build-cli
-	@./bin/cli $(ARGS)
+	@./report $(ARGS)
 
 run-cron: build-cron
 	@./bin/cron

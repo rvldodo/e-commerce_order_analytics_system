@@ -8,6 +8,7 @@ import (
 	"e-commerce_order_analytics_system/internal/repository"
 	"e-commerce_order_analytics_system/pkg/jwt"
 	"e-commerce_order_analytics_system/pkg/logger"
+	"e-commerce_order_analytics_system/pkg/validation"
 	"e-commerce_order_analytics_system/transport/http"
 	"e-commerce_order_analytics_system/transport/http/handler"
 	httpnet "net/http"
@@ -26,7 +27,7 @@ import (
 // @securityDefinitions.apikey	BearerAuth
 // @in							header
 // @name						Authorization
-// @description				User API token issued by POST /api/auth/login. Send it as "Bearer <token>".
+// @description				User API token issued by POST /api/v1/auth/login. Send it as "Bearer <token>".
 func main() {
 	cfg := config.New()
 
@@ -49,6 +50,9 @@ func main() {
 		AccessTokenSecret:  cfg.JWT.JWTSecret,
 		RefreshTokenSecret: cfg.JWT.JWTRefreshSecret,
 	})
+
+	// NOTE: Intialize Validator & Sanitizer
+	validation.New()
 
 	handler.New(repo, jwtTokenizer)
 

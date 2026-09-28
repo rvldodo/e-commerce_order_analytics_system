@@ -76,6 +76,7 @@ const (
 	InvalidHeaderValue
 
 	InvalidUserAuth
+	UnregisteredEmail
 
 	InvalidClaimCode
 	DeviceAlreadyClaimed
@@ -184,6 +185,11 @@ var codes = map[Code]CodeDetail{
 		Message:        "invalid username / password",
 		HttpStatus:     http.StatusUnauthorized,
 		InternalStatus: 4016,
+	},
+	UnregisteredEmail: {
+		Message:        "email is not registered",
+		HttpStatus:     http.StatusUnauthorized,
+		InternalStatus: 4018,
 	},
 	InvalidAPIKeyEnv: {
 		Message:        "API key not valid",
