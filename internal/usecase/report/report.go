@@ -33,7 +33,7 @@ var Types = []TypeInfo{
 	},
 	{
 		Type:        InventoryTurnover,
-		Description: "Stock, sales rate, days until stock-out, stock status and reorder quantity (needs products.stock_quantity)",
+		Description: "Stock, sales rate, days until stock-out, stock status and reorder quantity",
 		UsesDays:    true,
 	},
 	{
@@ -105,7 +105,6 @@ func (p Param) Validate() error {
 	return nil
 }
 
-// Tag identifies the run in file names, e.g. "2024" or "90d".
 func (p Param) Tag() string {
 	info, _ := Lookup(p.Type)
 	switch {

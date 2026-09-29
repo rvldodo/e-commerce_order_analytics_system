@@ -333,9 +333,7 @@ var (
 
 	// Query 5: Inventory Turnover and Stock Analysis.
 	//
-	// NOTE: requires products.stock_quantity. The original schema had this
-	// column; the improved schema in 000001_initial-tables.up.sql dropped it,
-	// so this query fails until a migration adds it back.
+	// products.stock_quantity is defined in 000001 and seeded in 000002.
 	//
 	// Out-of-stock products that still sell (stock = 0, rate > 0) have 0 days
 	// left and are therefore Critical. Status boundaries are half-open:

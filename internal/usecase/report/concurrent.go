@@ -16,9 +16,6 @@ type Result struct {
 	Duration time.Duration
 }
 
-// GenerateAll runs the reports with at most concurrency queries in flight.
-// Results keep the order of params, and one failing report does not cancel
-// the others.
 func (rs *reportStruct) GenerateAll(ctx context.Context, params []Param, concurrency int) []Result {
 	concurrency = min(max(concurrency, 1), MaxConcurrency)
 	results := make([]Result, len(params))
