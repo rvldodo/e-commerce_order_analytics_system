@@ -4,9 +4,7 @@
 
 - [Go](https://go.dev/dl/) 1.23+
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose
-- [air](https://github.com/air-verse/air) — `go install github.com/air-verse/air@latest`
 - [golang-migrate](https://github.com/golang-migrate/migrate) — `brew install golang-migrate`
-- [swag](https://github.com/swaggo/swag) (optional, for regenerating API docs) — `go install github.com/swaggo/swag/cmd/swag@latest`
 
 ---
 
@@ -103,20 +101,6 @@ make migration-up
 
 Pick whichever process you need. Each binary builds independently.
 
-**API server (with hot reload via air):**
-
-```bash
-air
-```
-
-**API server (without hot reload):**
-
-```bash
-go build -o ./bin/api ./cmd/api && ./bin/api
-# or
-make run-api
-```
-
 **CLI:**
 
 ```bash
@@ -135,12 +119,3 @@ go build -o ./bin/cron ./cmd/cron && ./bin/cron
 # or
 make run-cron
 ```
-
-## API Endpoints
-
-Routes are registered in [`transport/http/router.go`](transport/http/router.go). All versioned endpoints are mounted under `/api`.
-
-Interactive docs:
-
-- Swagger UI — `GET /docs/*any`
-- Scalar reference — `GET /reference`

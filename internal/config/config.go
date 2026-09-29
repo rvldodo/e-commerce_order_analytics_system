@@ -1,11 +1,20 @@
 package config
 
-import "e-commerce_order_analytics_system/pkg/env"
+import (
+	"e-commerce_order_analytics_system/pkg/env"
+	"time"
+)
 
 type Applications struct {
 	Server   *ServerConfig
 	Database *DatabaseConfig
 	JWT      *JWTConfig
+	Cache    *CacheConfig
+}
+
+type CacheConfig struct {
+	Dir string
+	TTL time.Duration
 }
 
 type ServerConfig struct {
@@ -42,6 +51,10 @@ func New() *Applications {
 			Password: env.GetString("DB_PASSWORD", ""),
 			DBName:   env.GetString("DB_NAME", ""),
 			SSLMode:  env.GetString("DB_SSL_MODE", ""),
+		},
+		Cache: &CacheConfig{
+			Dir: env.GetString("REPORT_CACHE_DIR", ".cache/report"),
+			TTL: env.GetDuration("REPORT_CACHE_TTL", 10*time.Minute),
 		},
 		JWT: &JWTConfig{
 			JWTSecret:        env.GetString("JWT_SECRET", "secret"),

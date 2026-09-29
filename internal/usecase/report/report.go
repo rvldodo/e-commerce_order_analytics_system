@@ -4,34 +4,11 @@ import (
 	"context"
 	"e-commerce_order_analytics_system/internal/repository"
 	"e-commerce_order_analytics_system/pkg/export"
-	"e-commerce_order_analytics_system/transport/http/dto"
+	"e-commerce_order_analytics_system/transport/command_line/dto"
 	"fmt"
 	"strings"
+	"time"
 )
-
-const (
-	DefaultYear = 2024
-	DefaultDays = 90
-	MaxDays     = 730
-)
-
-type Type string
-
-const (
-	CustomerCohort     Type = "customer_cohort"
-	ProductPerformance Type = "product_performance"
-	RFMSegmentation    Type = "rfm_segmentation"
-	SalesTrend         Type = "sales_trend"
-	InventoryTurnover  Type = "inventory_turnover"
-	PurchasePatterns   Type = "purchase_patterns"
-)
-
-type TypeInfo struct {
-	Type        Type
-	Description string
-	UsesYear    bool
-	UsesDays    bool
-}
 
 // Types lists every report in the order they are shown to users. Each one
 // maps to a query in internal/repository/queries/analytics.go.
@@ -64,6 +41,11 @@ var Types = []TypeInfo{
 		Description: "Customers with 3+ orders who ordered in the year: order gaps, favourite category, spending trend, lifetime",
 		UsesYear:    true,
 	},
+	{
+		Type:        DailySalesSummary,
+		Description: "One day's completed revenue, orders, average order value and top category (also: report export → JSON)",
+		UsesDate:    true,
+	},
 }
 
 func Lookup(t Type) (TypeInfo, bool) {
@@ -92,12 +74,14 @@ func ParseType(s string) (Type, error) {
 	)
 }
 
-// Param describes one report run. Year and Days are only read by the report
-// types that use them (see TypeInfo). Limit 0 returns every row.
+// Param describes one report run. Year, Days and Date are only read by the
+// report types that use them (see TypeInfo). Date is a calendar day in
+// Timezone; its clock part is ignored. Limit 0 returns every row.
 type Param struct {
 	Type  Type
 	Year  int
 	Days  int
+	Date  time.Time
 	Limit int
 }
 
@@ -111,6 +95,9 @@ func (p Param) Validate() error {
 	}
 	if info.UsesDays && (p.Days < 1 || p.Days > MaxDays) {
 		return fmt.Errorf("--days must be between 1 and %d", MaxDays)
+	}
+	if info.UsesDate && p.Date.IsZero() {
+		return fmt.Errorf("--date is required for %s", p.Type)
 	}
 	if p.Limit < 0 {
 		return fmt.Errorf("--limit must not be negative")
@@ -126,13 +113,16 @@ func (p Param) Tag() string {
 		return fmt.Sprint(p.Year)
 	case info.UsesDays:
 		return fmt.Sprintf("%dd", p.Days)
+	case info.UsesDate:
+		return p.Date.Format(time.DateOnly)
 	}
 	return ""
 }
 
 type ReportInterface interface {
 	Generate(ctx context.Context, param Param) (export.Sheet, error)
-	ReportDailySales(ctx context.Context) (dto.ReportResult, error)
+	GenerateAll(ctx context.Context, params []Param, concurrency int) []Result
+	DailySalesSummary(ctx context.Context, day time.Time) (dto.DailySalesSummaryResult, error)
 }
 
 type reportStruct struct {

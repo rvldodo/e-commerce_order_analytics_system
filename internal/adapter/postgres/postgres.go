@@ -40,6 +40,6 @@ func NewDatabasePostgres(conf *config.DatabaseConfig) (*sqlx.DB, error) {
 }
 
 func CloseDatabasePostgresql(db *sqlx.DB) {
-	logger.Log.Info("Closing mobile database connection pool...")
+	logger.Log.Info("Closing database connection pool...")
 	db.Close()
 }

@@ -4,6 +4,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"e-commerce_order_analytics_system/pkg/lib"
 
@@ -79,4 +80,18 @@ func GetStringArray(key string, fallback []string) []string {
 	}
 
 	return result
+}
+
+func GetDuration(key string, fallback time.Duration) time.Duration {
+	v, ok := os.LookupEnv(key)
+	if !ok {
+		return fallback
+	}
+
+	d, err := time.ParseDuration(strings.TrimSpace(v))
+	if err != nil {
+		return fallback
+	}
+
+	return d
 }
