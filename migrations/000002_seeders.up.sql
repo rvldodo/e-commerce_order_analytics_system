@@ -180,6 +180,42 @@ FROM  (
 ) t
 WHERE  o.id = t.order_id;
 
+
+-- Stock follows each product's sales velocity (completed orders, last 90
+-- days) so every inventory status appears with realistic numbers:
+--   ~8%  out of stock while still selling  -> Critical (0 days left)
+--   ~12% under 7 days of cover             -> Critical
+--   ~20% 7-29 days of cover                -> Low
+--   ~40% 30-90 days of cover               -> Adequate
+--   ~20% more than 90 days of cover        -> Overstocked
+-- Products without recent sales mostly keep leftover stock (Dead Stock).
+WITH velocity AS (
+    SELECT p.id,
+           COALESCE(SUM(oi.quantity) FILTER (
+               WHERE o.order_date >= now() - INTERVAL '90 days'
+           ), 0) / 90.0 AS daily_rate
+    FROM   products p
+    LEFT   JOIN order_items oi ON oi.product_id = p.id
+    LEFT   JOIN orders o       ON o.id = oi.order_id AND o.status = 'completed'
+    GROUP  BY p.id
+),
+draw AS (
+    SELECT id, daily_rate, random() AS r, random() AS spread
+    FROM   velocity
+)
+UPDATE products p
+SET    stock_quantity = CASE
+           WHEN d.daily_rate = 0 THEN
+               CASE WHEN d.r < 0.7 THEN 20 + FLOOR(d.spread * 180)::int ELSE 0 END
+           WHEN d.r < 0.08 THEN 0
+           WHEN d.r < 0.20 THEN CEIL(d.daily_rate * (1  + d.spread * 5.5))::int
+           WHEN d.r < 0.40 THEN CEIL(d.daily_rate * (7  + d.spread * 22))::int
+           WHEN d.r < 0.80 THEN CEIL(d.daily_rate * (30 + d.spread * 60))::int
+           ELSE                 CEIL(d.daily_rate * (91 + d.spread * 180))::int
+       END
+FROM   draw d
+WHERE  d.id = p.id;
+
 ANALYZE customers;
 ANALYZE categories;
 ANALYZE products;

@@ -75,8 +75,8 @@ func (pg *pgStruct) GetInventoryTurnover(
 	var pqErr *pq.Error
 	if stderrors.As(err, &pqErr) && pqErr.Code == "42703" {
 		return nil, errors.Wrap(errors.FailToSelect, fmt.Errorf(
-			"inventory report needs products.stock_quantity, which the current schema does not have; "+
-				"add it with a migration first (%s)",
+			"inventory report needs products.stock_quantity: re-run the migrations "+
+				"(make migration-down, then make migration-up) (%s)",
 			pqErr.Message,
 		))
 	}

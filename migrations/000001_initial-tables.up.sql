@@ -68,12 +68,13 @@ CREATE TABLE categories (
 CREATE INDEX idx_categories_parent ON categories (parent_id);
 
 CREATE TABLE products (
-    id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    name         VARCHAR(255)  NOT NULL,
-    category_id  INT REFERENCES categories(id),
-    price        NUMERIC(10,2) NOT NULL CHECK (price >= 0),
-    is_active    BOOLEAN       NOT NULL DEFAULT true,
-    created_at   TIMESTAMPTZ   NOT NULL DEFAULT now()
+    id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name            VARCHAR(255)  NOT NULL,
+    category_id     INT REFERENCES categories(id),
+    price           NUMERIC(10,2) NOT NULL CHECK (price >= 0),
+    stock_quantity  INT           NOT NULL DEFAULT 0 CHECK (stock_quantity >= 0),
+    is_active       BOOLEAN       NOT NULL DEFAULT true,
+    created_at      TIMESTAMPTZ   NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_products_category ON products (category_id) WHERE is_active;
