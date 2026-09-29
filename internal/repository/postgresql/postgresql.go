@@ -3,6 +3,7 @@ package postgresql
 import (
 	"context"
 	"e-commerce_order_analytics_system/internal/repository/entity"
+	"time"
 
 	"database/sql"
 	"e-commerce_order_analytics_system/pkg/errors"
@@ -15,9 +16,6 @@ type pgStruct struct {
 }
 
 type PostgresInterface interface {
-	GetCustomerByID(ctx context.Context, customerID int64) (entity.CustomerEntity, error)
-	CheckEmail(ctx context.Context, email string) (entity.CustomerEntity, error)
-
 	GetCustomerCohorts(ctx context.Context, year int) ([]entity.CustomerCohortEntity, error)
 	GetProductPerformance(ctx context.Context) ([]entity.ProductPerformanceEntity, error)
 	GetCustomerRFM(ctx context.Context) ([]entity.CustomerRFMEntity, error)
@@ -27,6 +25,7 @@ type PostgresInterface interface {
 		ctx context.Context,
 		year int,
 	) ([]entity.CustomerPurchasePatternEntity, error)
+	GetDailySalesSummary(ctx context.Context, day time.Time) (entity.DailySalesSummaryEntity, error)
 }
 
 func NewPG(db *sqlx.DB) PostgresInterface {

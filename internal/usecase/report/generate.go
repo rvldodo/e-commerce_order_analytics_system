@@ -28,6 +28,8 @@ func (rs *reportStruct) Generate(ctx context.Context, param Param) (export.Sheet
 		sheet, err = rs.inventoryTurnover(ctx, param.Days)
 	case PurchasePatterns:
 		sheet, err = rs.purchasePatterns(ctx, param.Year)
+	case DailySalesSummary:
+		sheet, err = rs.dailySalesSummarySheet(ctx, param.Date)
 	default:
 		err = fmt.Errorf("unknown report type %q", param.Type)
 	}

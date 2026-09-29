@@ -56,6 +56,9 @@ func Init(env string) error {
 		cfg = zap.NewDevelopmentConfig()
 		cfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	}
+	// Errors here are expected outcomes (bad input, missing column), so a Go
+	// stack trace on every one only buries the message.
+	cfg.DisableStacktrace = true
 	l, err := cfg.Build()
 	if err != nil {
 		return err

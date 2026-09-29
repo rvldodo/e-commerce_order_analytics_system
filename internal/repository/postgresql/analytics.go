@@ -14,7 +14,16 @@ import (
 
 const analyticsQueryTimeout = 2 * time.Minute
 
-func (pg *pgStruct) selectAll(ctx context.Context, dest any, query string, args ...any) error {
+func (pg *pgStruct) selectAll(
+	ctx context.Context,
+	name string,
+	dest any,
+	query string,
+	args ...any,
+) (err error) {
+	start := time.Now()
+	defer func() { logQuery(ctx, name, start, rowCount(dest), err) }()
+
 	dbCtx, cancel := context.WithTimeout(ctx, analyticsQueryTimeout)
 	defer cancel()
 
@@ -29,7 +38,7 @@ func (pg *pgStruct) GetCustomerCohorts(
 	year int,
 ) ([]entity.CustomerCohortEntity, error) {
 	res := []entity.CustomerCohortEntity{}
-	err := pg.selectAll(ctx, &res, queries.CustomerCohortAnalysisQuery, year)
+	err := pg.selectAll(ctx, "CustomerCohortAnalysisQuery", &res, queries.CustomerCohortAnalysisQuery, year)
 	return res, err
 }
 
@@ -37,13 +46,13 @@ func (pg *pgStruct) GetProductPerformance(
 	ctx context.Context,
 ) ([]entity.ProductPerformanceEntity, error) {
 	res := []entity.ProductPerformanceEntity{}
-	err := pg.selectAll(ctx, &res, queries.ProductPerformanceQuery)
+	err := pg.selectAll(ctx, "ProductPerformanceQuery", &res, queries.ProductPerformanceQuery)
 	return res, err
 }
 
 func (pg *pgStruct) GetCustomerRFM(ctx context.Context) ([]entity.CustomerRFMEntity, error) {
 	res := []entity.CustomerRFMEntity{}
-	err := pg.selectAll(ctx, &res, queries.CustomerRFMSegmentationQuery)
+	err := pg.selectAll(ctx, "CustomerRFMSegmentationQuery", &res, queries.CustomerRFMSegmentationQuery)
 	return res, err
 }
 
@@ -52,7 +61,7 @@ func (pg *pgStruct) GetSalesTrend(
 	days int,
 ) ([]entity.SalesTrendEntity, error) {
 	res := []entity.SalesTrendEntity{}
-	err := pg.selectAll(ctx, &res, queries.SalesTrendAnalysisQuery, days)
+	err := pg.selectAll(ctx, "SalesTrendAnalysisQuery", &res, queries.SalesTrendAnalysisQuery, days)
 	return res, err
 }
 
@@ -61,7 +70,7 @@ func (pg *pgStruct) GetInventoryTurnover(
 	days int,
 ) ([]entity.InventoryTurnoverEntity, error) {
 	res := []entity.InventoryTurnoverEntity{}
-	err := pg.selectAll(ctx, &res, queries.InventoryTurnoverQuery, days)
+	err := pg.selectAll(ctx, "InventoryTurnoverQuery", &res, queries.InventoryTurnoverQuery, days)
 
 	var pqErr *pq.Error
 	if stderrors.As(err, &pqErr) && pqErr.Code == "42703" {
@@ -79,6 +88,6 @@ func (pg *pgStruct) GetCustomerPurchasePatterns(
 	year int,
 ) ([]entity.CustomerPurchasePatternEntity, error) {
 	res := []entity.CustomerPurchasePatternEntity{}
-	err := pg.selectAll(ctx, &res, queries.CustomerPurchasePatternQuery, year)
+	err := pg.selectAll(ctx, "CustomerPurchasePatternQuery", &res, queries.CustomerPurchasePatternQuery, year)
 	return res, err
 }

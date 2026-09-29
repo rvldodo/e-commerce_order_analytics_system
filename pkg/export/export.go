@@ -1,14 +1,16 @@
-// Package export writes tabular data to csv, xlsx or an aligned text table.
 package export
 
 import (
+	"bytes"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/xuri/excelize/v2"
@@ -20,18 +22,17 @@ const (
 	CSV   Format = "csv"
 	XLSX  Format = "xlsx"
 	Table Format = "table"
+	JSON  Format = "json"
 )
 
 func ParseFormat(s string) (Format, error) {
 	switch f := Format(strings.ToLower(strings.TrimSpace(s))); f {
-	case CSV, XLSX, Table:
+	case CSV, XLSX, Table, JSON:
 		return f, nil
 	}
-	return "", fmt.Errorf("unknown format %q: expected xlsx, csv or table", s)
+	return "", fmt.Errorf("unknown format %q: expected xlsx, csv, json or table", s)
 }
 
-// Sheet is a titled grid. Cells may be string, integers, float64, time.Time,
-// a nil pointer or nil; nil renders as an empty cell.
 type Sheet struct {
 	Name    string
 	Columns []string
@@ -46,6 +47,8 @@ func Write(w io.Writer, f Format, s Sheet) error {
 		return writeXLSX(w, s)
 	case Table:
 		return writeTable(w, s)
+	case JSON:
+		return writeJSON(w, s)
 	}
 	return fmt.Errorf("unsupported format %q", f)
 }
@@ -215,4 +218,87 @@ func formatText(v any) string {
 	default:
 		return fmt.Sprint(t)
 	}
+}
+
+// writeJSON emits {"report": ..., "columns": [...], "rows": [{...}]} with row
+// keys in column order, so the file reads like the other formats.
+func writeJSON(w io.Writer, s Sheet) error {
+	keys := make([]string, len(s.Columns))
+	for i, c := range s.Columns {
+		keys[i] = Key(c)
+	}
+
+	var buf bytes.Buffer
+	buf.WriteString("{\n  \"report\": ")
+	if err := writeJSONValue(&buf, s.Name); err != nil {
+		return err
+	}
+	buf.WriteString(",\n  \"columns\": ")
+	if err := writeJSONValue(&buf, keys); err != nil {
+		return err
+	}
+	buf.WriteString(",\n  \"rows\": [")
+	for r, row := range s.Rows {
+		if r > 0 {
+			buf.WriteString(",")
+		}
+		buf.WriteString("\n    {")
+		for i, v := range row {
+			if i > 0 {
+				buf.WriteString(", ")
+			}
+			if err := writeJSONValue(&buf, keys[i]); err != nil {
+				return err
+			}
+			buf.WriteString(": ")
+			if err := writeJSONValue(&buf, jsonValue(v)); err != nil {
+				return err
+			}
+		}
+		buf.WriteString("}")
+	}
+	if len(s.Rows) > 0 {
+		buf.WriteString("\n  ")
+	}
+	buf.WriteString("]\n}\n")
+
+	_, err := w.Write(buf.Bytes())
+	return err
+}
+
+func writeJSONValue(buf *bytes.Buffer, v any) error {
+	raw, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	buf.Write(raw)
+	return nil
+}
+
+func jsonValue(v any) any {
+	switch t := deref(v).(type) {
+	case time.Time:
+		return t.Format(time.DateOnly)
+	default:
+		return t
+	}
+}
+
+// Key turns a column header into a snake_case JSON key:
+// "Revenue vs Avg %" -> "revenue_vs_avg_pct".
+func Key(column string) string {
+	var b strings.Builder
+	pendingSep := false
+	for _, r := range strings.ReplaceAll(column, "%", " pct ") {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			if pendingSep && b.Len() > 0 {
+				b.WriteByte('_')
+			}
+			pendingSep = false
+			b.WriteRune(unicode.ToLower(r))
+			continue
+		}
+		pendingSep = true
+	}
+	return b.String()
 }
