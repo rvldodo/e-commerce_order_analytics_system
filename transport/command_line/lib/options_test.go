@@ -143,6 +143,7 @@ func TestParseExportOptions(t *testing.T) {
 
 func TestParseSendOptions(t *testing.T) {
 	t.Setenv(TokenEnv, "")
+	t.Setenv(URLEnv, "")
 	base := []string{"--url", "https://api.example.com/v1/reports", "--file", "r.json"}
 
 	if _, err := ParseSendOptions(
@@ -207,5 +208,57 @@ func TestWriteFileAtomic(t *testing.T) {
 	entries, _ := filepath.Glob(filepath.Join(filepath.Dir(path), "*"))
 	if len(entries) != 1 {
 		t.Fatalf("temp files left behind: %v", entries)
+	}
+}
+
+func TestParsePushOptions(t *testing.T) {
+	t.Setenv(TokenEnv, "")
+	t.Setenv(URLEnv, "")
+
+	if _, err := ParsePushOptions(nil, testNow, io.Discard); err == nil ||
+		!strings.Contains(err.Error(), URLEnv) {
+		t.Fatalf("missing url should mention %s, got %v", URLEnv, err)
+	}
+
+	t.Setenv(URLEnv, "https://api.bi-platform.com/v1/reports")
+	t.Setenv(TokenEnv, "secret")
+	opts, err := ParsePushOptions(nil, testNow, io.Discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opts.URL != "https://api.bi-platform.com/v1/reports" || opts.Token != "secret" ||
+		opts.Date.Format(time.DateOnly) != "2026-09-28" || opts.Retries != 3 {
+		t.Fatalf("opts = %+v", opts)
+	}
+
+	opts, err = ParsePushOptions(
+		[]string{"--date", "2024-11-29", "--url", "https://other.example.com/r", "--retries", "0"},
+		testNow, io.Discard,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opts.URL != "https://other.example.com/r" || opts.Retries != 0 ||
+		opts.Date.Format(time.DateOnly) != "2024-11-29" {
+		t.Fatalf("flags should win over env: %+v", opts)
+	}
+
+	for name, args := range map[string][]string{
+		"plain http": {"--url", "http://api.bi-platform.com/v1/reports"},
+		"bad date":   {"--date", "29/11/2024"},
+		"stray arg":  {"now"},
+	} {
+		if _, err := ParsePushOptions(args, testNow, io.Discard); err == nil {
+			t.Errorf("%s: want error", name)
+		}
+	}
+}
+
+func TestParsePushOptionsDryRunNeedsNoAPI(t *testing.T) {
+	t.Setenv(TokenEnv, "")
+	t.Setenv(URLEnv, "")
+	opts, err := ParsePushOptions([]string{"--dry-run"}, testNow, io.Discard)
+	if err != nil || !opts.DryRun {
+		t.Fatalf("dry run should not require --url/--token: %+v %v", opts, err)
 	}
 }

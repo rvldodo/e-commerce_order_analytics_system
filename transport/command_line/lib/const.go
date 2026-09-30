@@ -6,6 +6,7 @@ Usage:
   report get [flags]       Generate one or more reports (database connection is read from .env)
   report export [flags]    Export one day's sales summary (JSON by default)
   report send [flags]      POST a JSON file to an API endpoint
+  report push [flags]      Build the daily sales summary and POST it to the API in one step
   report types             List available report types and the flags they use
   report help              Show this help
 
@@ -36,9 +37,20 @@ Flags for send:
   --retries      Extra attempts on network errors, 408, 429 and 5xx (default: 3)
   --timeout      Per-attempt timeout (default: 30s)
 
+Flags for push:
+  --date         Day to summarise, YYYY-MM-DD (default: yesterday)
+  --url          API endpoint (default: $REPORT_API_URL)
+  --token        Bearer token (default: $REPORT_API_TOKEN)
+  --retries      Extra attempts on network errors, 408, 429 and 5xx (default: 3)
+  --timeout      Per-attempt timeout (default: 30s)
+  --dry-run      Print the SQL and its parameters without executing or sending
+  --no-cache     Skip cached results and refresh them
+
 Environment:
   REPORT_CACHE_TTL   How long query results are cached, 0 disables (default: 10m)
   REPORT_CACHE_DIR   Where cached results are stored (default: .cache/report)
+  REPORT_API_URL     Default --url for send and push
+  REPORT_API_TOKEN   Default --token for send and push
 
 Logs (query time, rows returned, errors) go to stderr; report output goes to stdout or files.
 Days and months are evaluated in Asia/Jakarta. Only completed orders count.
@@ -56,4 +68,6 @@ Examples:
   report export --date 2024-11-29 --format csv --out -
 
   report send --url https://api.example.com/v1/reports --file reports/daily_sales_summary_2024-11-29.json
+
+  report push --date 2024-11-29 --url https://api.bi-platform.com/v1/reports
 `

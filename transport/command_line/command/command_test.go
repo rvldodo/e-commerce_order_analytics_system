@@ -20,6 +20,8 @@ func TestNeedsDatabase(t *testing.T) {
 		{[]string{"export", "--date", "2024-11-29"}, true},
 		{[]string{"export", "--dry-run"}, false},
 		{[]string{"get", "--out", "dry-run"}, true},
+		{[]string{"push"}, true},
+		{[]string{"push", "--dry-run"}, false},
 	}
 	for _, c := range cases {
 		if got := NeedsDatabase(c.args); got != c.want {
