@@ -15,8 +15,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// CmdPush generates the daily sales summary and posts it to the BI API in
-// one step, so it can be scheduled as a single command.
 func (cli *commandHandler) CmdPush(
 	ctx context.Context,
 	args []string,

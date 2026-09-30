@@ -67,8 +67,6 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) int {
 	return 0
 }
 
-// NeedsDatabase reports whether the command line will query Postgres, so
-// help, types, send and --dry-run work without a database.
 func NeedsDatabase(args []string) bool {
 	if len(args) == 0 || (args[0] != "get" && args[0] != "export" && args[0] != "push") {
 		return false

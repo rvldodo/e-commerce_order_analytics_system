@@ -31,8 +31,6 @@ func WriteFile(path string, format export.Format, sheet export.Sheet) error {
 	})
 }
 
-// WriteFileAtomic writes to a temp file next to path and renames it into
-// place, so a failed export never leaves a truncated file behind.
 func WriteFileAtomic(path string, write func(w io.Writer) error) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
