@@ -45,6 +45,8 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) int {
 		err = handler.GetHandler().CmdExport(ctx, rest, out, errOut)
 	case "send":
 		err = handler.GetHandler().CmdSend(ctx, rest, out, errOut)
+	case "push":
+		err = handler.GetHandler().CmdPush(ctx, rest, out, errOut)
 	case "types":
 		err = handler.GetHandler().CmdTypes(out)
 	case "help", "-h", "--help":
@@ -65,10 +67,8 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) int {
 	return 0
 }
 
-// NeedsDatabase reports whether the command line will query Postgres, so
-// help, types, send and --dry-run work without a database.
 func NeedsDatabase(args []string) bool {
-	if len(args) == 0 || (args[0] != "get" && args[0] != "export") {
+	if len(args) == 0 || (args[0] != "get" && args[0] != "export" && args[0] != "push") {
 		return false
 	}
 	for _, a := range args[1:] {

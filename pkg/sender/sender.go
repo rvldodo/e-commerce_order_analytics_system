@@ -19,7 +19,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const MaxBodySize = 10 << 20 // 10 MiB
+const MaxBodySize = 10 << 20
 
 type Request struct {
 	URL      string
@@ -163,7 +163,6 @@ func post(
 	defer resp.Body.Close()
 
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<10))
-	// Drain the rest so the connection can be reused.
 	_, _ = io.Copy(io.Discard, resp.Body)
 
 	if secs, err := strconv.Atoi(resp.Header.Get("Retry-After")); err == nil && secs > 0 {

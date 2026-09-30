@@ -103,11 +103,11 @@ func writeXLSX(w io.Writer, s Sheet) error {
 	if err != nil {
 		return err
 	}
-	decimalStyle, err := f.NewStyle(&excelize.Style{NumFmt: 4}) // #,##0.00
+	decimalStyle, err := f.NewStyle(&excelize.Style{NumFmt: 4})
 	if err != nil {
 		return err
 	}
-	intStyle, err := f.NewStyle(&excelize.Style{NumFmt: 3}) // #,##0
+	intStyle, err := f.NewStyle(&excelize.Style{NumFmt: 3})
 	if err != nil {
 		return err
 	}
@@ -220,8 +220,6 @@ func formatText(v any) string {
 	}
 }
 
-// writeJSON emits {"report": ..., "columns": [...], "rows": [{...}]} with row
-// keys in column order, so the file reads like the other formats.
 func writeJSON(w io.Writer, s Sheet) error {
 	keys := make([]string, len(s.Columns))
 	for i, c := range s.Columns {
@@ -284,8 +282,6 @@ func jsonValue(v any) any {
 	}
 }
 
-// Key turns a column header into a snake_case JSON key:
-// "Revenue vs Avg %" -> "revenue_vs_avg_pct".
 func Key(column string) string {
 	var b strings.Builder
 	pendingSep := false

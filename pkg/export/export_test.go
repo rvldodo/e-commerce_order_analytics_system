@@ -87,7 +87,6 @@ func TestWriteJSON(t *testing.T) {
 	if v, ok := doc.Rows[1]["revenue_vs_avg_pct"]; !ok || v != nil {
 		t.Fatalf("nil pointer should be null, got %v (present=%v)", v, ok)
 	}
-	// Keys follow column order, not alphabetical order.
 	if !strings.Contains(buf.String(), `{"day": "2024-11-29", "orders": 15`) {
 		t.Fatalf("keys not in column order:\n%s", buf.String())
 	}
