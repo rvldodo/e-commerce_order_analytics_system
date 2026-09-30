@@ -6,7 +6,7 @@ APP_NAME=e-commerce_order_analytics_system
 .PHONY: test tidy build-cli build-cron run-cli run-cron migration migration-up migration-down migration-force migration-version
 
 test:
-	@go test ./...
+	@go test ./... -v
 
 tidy:
 	@go mod tidy

@@ -2,9 +2,7 @@ package handler
 
 import (
 	"context"
-	"e-commerce_order_analytics_system/internal/usecase/report"
 	"e-commerce_order_analytics_system/pkg/cache"
-	"e-commerce_order_analytics_system/pkg/export"
 	"e-commerce_order_analytics_system/pkg/logger"
 	"e-commerce_order_analytics_system/transport/command_line/lib"
 	"fmt"
@@ -26,7 +24,7 @@ func (cli *commandHandler) CmdGet(
 	}
 
 	if opts.DryRun {
-		return printPlans(out, opts.Params)
+		return lib.PrintPlans(out, opts.Params)
 	}
 	if opts.NoCache {
 		ctx = cache.WithBypass(ctx)
@@ -50,7 +48,7 @@ func (cli *commandHandler) CmdGet(
 			continue
 		}
 
-		dest, err := writeResult(out, opts, i, res.Sheet, len(results) > 1)
+		dest, err := lib.WriteResult(out, opts, i, res.Sheet, len(results) > 1)
 		if err != nil {
 			log.Error("report write failed", zap.Error(err))
 			failed = append(failed, fmt.Sprintf("%s (%v)", res.Param.Type, err))
@@ -70,41 +68,6 @@ func (cli *commandHandler) CmdGet(
 			len(results),
 			strings.Join(failed, "; "),
 		)
-	}
-	return nil
-}
-
-func writeResult(
-	out io.Writer,
-	opts lib.GetOptions,
-	i int,
-	sheet export.Sheet,
-	multiple bool,
-) (string, error) {
-	if opts.Format == export.Table {
-		if multiple {
-			fmt.Fprintf(out, "\n== %s ==\n", sheet.Name)
-		}
-		return "stdout", export.Write(out, opts.Format, sheet)
-	}
-
-	dest := opts.Outputs[i]
-	if dest == "-" {
-		return "stdout", export.Write(out, opts.Format, sheet)
-	}
-	return dest, lib.WriteFile(dest, opts.Format, sheet)
-}
-
-func printPlans(out io.Writer, params []report.Param) error {
-	for i, p := range params {
-		st, err := report.Plan(p)
-		if err != nil {
-			return err
-		}
-		if i > 0 {
-			fmt.Fprintln(out)
-		}
-		fmt.Fprint(out, st.String())
 	}
 	return nil
 }

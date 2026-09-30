@@ -225,3 +225,38 @@ func DefaultFileName(p report.Param, format export.Format, now time.Time) string
 	}
 	return name + "_" + now.Format(time.DateOnly) + "." + string(format)
 }
+
+func WriteResult(
+	out io.Writer,
+	opts GetOptions,
+	i int,
+	sheet export.Sheet,
+	multiple bool,
+) (string, error) {
+	if opts.Format == export.Table {
+		if multiple {
+			fmt.Fprintf(out, "\n== %s ==\n", sheet.Name)
+		}
+		return "stdout", export.Write(out, opts.Format, sheet)
+	}
+
+	dest := opts.Outputs[i]
+	if dest == "-" {
+		return "stdout", export.Write(out, opts.Format, sheet)
+	}
+	return dest, WriteFile(dest, opts.Format, sheet)
+}
+
+func PrintPlans(out io.Writer, params []report.Param) error {
+	for i, p := range params {
+		st, err := report.Plan(p)
+		if err != nil {
+			return err
+		}
+		if i > 0 {
+			fmt.Fprintln(out)
+		}
+		fmt.Fprint(out, st.String())
+	}
+	return nil
+}
