@@ -25,7 +25,10 @@ func (cli *commandHandler) CmdExport(
 	}
 
 	if opts.DryRun {
-		return printPlans(out, []report.Param{{Type: report.DailySalesSummary, Date: opts.Date}})
+		return lib.PrintPlans(
+			out,
+			[]report.Param{{Type: report.DailySalesSummary, Date: opts.Date}},
+		)
 	}
 	if opts.NoCache {
 		ctx = cache.WithBypass(ctx)
