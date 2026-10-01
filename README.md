@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- [Go](https://go.dev/dl/) 1.23+
+- [Go](https://go.dev/dl/) 1.26+
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose
 - [golang-migrate](https://github.com/golang-migrate/migrate) — `brew install golang-migrate`
 
@@ -475,25 +475,41 @@ Other ways to run it, depending on where the project is deployed:
 
 ## Running Locally
 
-### 1. Clone and install dependencies
+You need Go 1.26+, Docker, and [golang-migrate](https://github.com/golang-migrate/migrate) (`brew install golang-migrate`). Everything below is run from the project root.
+
+### 1. Get the code
 
 ```bash
 git clone <repo-url>
 cd e-commerce_order_analytics_system
-go mod tidy
+go mod download
 ```
 
-### 2. Configure environment
-
-Copy `.env.example` to `.env` and fill in the required values (database URL, JWT secrets, etc.):
+### 2. Set up `.env`
 
 ```bash
 cp .env.example .env
 ```
 
-### 3. Provision local secrets for Docker
+Then fill in the database part. The values have to match the Postgres user and password you create in the next step:
 
-The `db` service reads its credentials from files in `./secrets/`. Create them once:
+```bash
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=ecommerce_order_analytics_system
+DB_SSL_MODE=disable
+
+# same database, as a URL, used by the migration tool
+DB_MIGRATOR_ADDR="postgresql://postgres:postgres@localhost:5432/ecommerce_order_analytics_system?sslmode=disable"
+```
+
+The rest can stay as it is for now. `REPORT_API_URL` and `REPORT_API_TOKEN` are only needed for `report send` and `report push`, and the cache settings already have sensible defaults.
+
+### 3. Create the Docker secrets
+
+The Postgres container reads its user and password from two files in `./secrets/`. Use the same values as `DB_USER` and `DB_PASSWORD` in your `.env`:
 
 ```bash
 mkdir -p secrets
@@ -501,39 +517,82 @@ echo "postgres" > secrets/user.txt
 echo "postgres" > secrets/password.txt
 ```
 
-### 4. Start the infrastructure
-
-Brings up PostgreSQL (`:5432`)
+### 4. Start Postgres
 
 ```bash
 docker compose up -d
+docker compose ps        # wait until it says "healthy"
 ```
 
-### 5. Run database migrations
+The first time it starts, `sql/init.sql` creates the `ecommerce_order_analytics_system` database. That only happens when the data volume is empty. If you change the user or password later, run `docker compose down -v` to start from a clean volume.
+
+### 5. Create the tables and sample data
 
 ```bash
 make migration-up
 ```
 
-### 6. Start the services
+This creates the tables and fills them with sample data (about 10,000 customers and two years of orders), so it can take a little while. `make migration-version` should print `2` when it's done.
 
-Pick whichever process you need. Each binary builds independently.
-
-**CLI:**
+To start over with fresh data, roll everything back and run it again:
 
 ```bash
-go build -o ./report ./cmd/cli
-# or
-make build-cli
-
-# then (to see all commands available)
-./report -- help
+make migration-down      # answer "y" when it asks
+make migration-up
 ```
 
-**Cron:**
+### 6. Run the CLI
+
+**Without building anything**, use `go run`. It compiles in the background and runs straight away, which is the quickest way to try things out:
 
 ```bash
-go build -o ./bin/cron ./cmd/cron && ./bin/cron
-# or
-make run-cron
+go run ./cmd/cli help
+go run ./cmd/cli types
+go run ./cmd/cli get --type sales_trend --format table
+go run ./cmd/cli get --type customer_cohort --year 2024 --format csv --out -
+go run ./cmd/cli export --date 2024-11-29 --out -
 ```
+
+Anything you can do with `./report`, you can do with `go run ./cmd/cli` followed by the same command and flags.
+
+**If you're going to use it a lot**, build the binary once. It starts faster and you can copy it to a server:
+
+```bash
+make build-cli           # or: go build -o ./report ./cmd/cli
+./report help
+./report get --type all --format csv
+```
+
+There's also `make run-cli`, which builds and runs in one go. Pass the arguments through `ARGS`:
+
+```bash
+make run-cli ARGS="get --type rfm_segmentation --format table --limit 10"
+```
+
+Run it from the project root either way. It reads `.env` from the current folder and saves reports into `./reports/`.
+
+### 7. Run the scheduler (optional)
+
+```bash
+go run ./cmd/cron        # without building
+# or
+make run-cron            # builds bin/cron, then runs it
+```
+
+It keeps running and fires the scheduled jobs at their times (Asia/Jakarta). Stop it with Ctrl+C; jobs that are still running get up to 20 seconds to finish before it exits.
+
+### 8. Run the tests
+
+```bash
+go test ./...            # or: make test (verbose)
+```
+
+The tests don't need the database, so they work even before step 4.
+
+### If something doesn't work
+
+- **`connection refused`**: Postgres isn't up yet. Check `docker compose ps`, and wait for "healthy".
+- **`password authentication failed`**: the values in `.env` don't match `secrets/`. Fix them, then `docker compose down -v && docker compose up -d` (this wipes the local database) and run the migrations again.
+- **`relation "orders" does not exist`**: the migrations haven't run yet (step 5).
+- **`inventory report needs products.stock_quantity`**: your database was created before the stock column was added. Run `make migration-down` and `make migration-up` to rebuild it.
+- **Old numbers after reseeding**: results are cached for 10 minutes. Add `--no-cache`, or delete `.cache/`.
