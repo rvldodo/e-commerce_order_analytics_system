@@ -9,7 +9,7 @@ services:
       - db-archipelago-user
     volumes:
       - db-archipelago-data:/var/lib/postgresql/data
-      - ./sql:/docker-entrypoint-initdb.d
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
     environment:
       - POSTGRES_USER_FILE=/run/secrets/db-archipelago-user
       - POSTGRES_PASSWORD_FILE=/run/secrets/db-archipelago-password
